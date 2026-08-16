@@ -1,0 +1,17 @@
+[Unit]
+Description=Cedar Linux operations console
+After=network.target
+
+[Service]
+Type=simple
+User=cedar
+Group=cedar
+EnvironmentFile=-/etc/cedar/cedar.env
+WorkingDirectory=/opt/cedar/backend
+ExecStart=/opt/cedar/venv/bin/python -m app.main
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

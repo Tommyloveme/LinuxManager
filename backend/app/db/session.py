@@ -39,7 +39,10 @@ def _ensure_columns(conn) -> None:
     from sqlalchemy import text
 
     migrations = {
-        "scripts": {"ord": "INTEGER DEFAULT 0"},
+        "scripts": {
+            "ord": "INTEGER DEFAULT 0",
+            "default_args": "VARCHAR(512) DEFAULT ''",
+        },
     }
     for table, columns in migrations.items():
         existing = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}

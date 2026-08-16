@@ -33,6 +33,7 @@ class ScriptIn(BaseModel):
     content: str = "#!/bin/bash\nset -euo pipefail\necho hello\n"
     tags: str = ""
     timeout_sec: int = 120
+    default_args: str = ""
 
 
 class ScriptPatch(BaseModel):
@@ -42,10 +43,19 @@ class ScriptPatch(BaseModel):
     content: str | None = None
     tags: str | None = None
     timeout_sec: int | None = None
+    default_args: str | None = None
 
 
 class ScriptReorderIn(BaseModel):
     ids: list[int]
+
+
+class ScriptBatchDeleteIn(BaseModel):
+    ids: list[int]
+
+
+class ScriptRunOneIn(BaseModel):
+    args: str | None = None
 
 
 class ScriptRunIn(BaseModel):

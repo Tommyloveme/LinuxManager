@@ -4,7 +4,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_identity, current_user, cwd_of, db_session, linux_user_of
-from app.api.schemas import ScriptIn, ScriptPatch, ScriptReorderIn, ScriptRunIn
+from app.api.schemas import (
+    ScriptBatchDeleteIn,
+    ScriptIn,
+    ScriptPatch,
+    ScriptReorderIn,
+    ScriptRunIn,
+    ScriptRunOneIn,
+)
 from app.core.exceptions import CedarError
 from app.db.models import AppUser, LinuxIdentity, Script, ScriptRun
 from app.modules.scripts.service import ScriptService
@@ -22,6 +29,7 @@ def _script_out(script: Script) -> dict:
         "tags": script.tags,
         "timeout_sec": script.timeout_sec,
         "ord": script.ord,
+        "default_args": script.default_args,
         "updated_at": script.updated_at.isoformat() if script.updated_at else None,
     }
 
@@ -73,6 +81,16 @@ async def reorder_scripts(
     await svc.reorder(body.ids)
     items = await svc.list_scripts()
     return {"items": [_script_out(s) for s in items]}
+
+
+@router.post("/batch-delete")
+async def batch_delete_scripts(
+    body: ScriptBatchDeleteIn,
+    _: object = Depends(current_user),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    deleted = await ScriptService(db).delete_many(body.ids)
+    return {"deleted": deleted}
 
 
 @router.get("/runs")
@@ -127,6 +145,7 @@ async def delete_script(
 @router.post("/{script_id}/run")
 async def run_script(
     script_id: int,
+    body: ScriptRunOneIn | None = None,
     user: AppUser = Depends(current_user),
     identity: LinuxIdentity = Depends(current_identity),
     db: AsyncSession = Depends(db_session),
@@ -139,6 +158,7 @@ async def run_script(
             linux_user=linux_user_of(identity),
             cwd=cwd_of(identity),
             actor=user.username,
+            args=body.args if body else None,
         )
         return _run_out(run)
     except CedarError as exc:

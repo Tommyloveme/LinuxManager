@@ -47,23 +47,49 @@
         <button class="primary" :disabled="!selected.length || running" @click="batch">
           {{ running ? "执行中…" : `批量执行选中 (${selected.length})` }}
         </button>
+        <button class="danger" :disabled="!selected.length || running" @click="batchDelete">
+          批量删除选中 ({{ selected.length }})
+        </button>
+        <p class="muted small">批量执行时，每个脚本使用其配置的「默认参数」。</p>
       </div>
     </aside>
 
     <section class="card editor" v-if="current">
       <div class="row">
-        <input v-model="current.name" class="title" />
-        <button class="primary" @click="save">保存</button>
-        <button @click="run" :disabled="running">运行</button>
-        <button class="danger" @click="remove">删除</button>
+        <label class="fld grow">脚本名称
+          <input v-model="current.name" class="title" />
+        </label>
+        <div class="row-actions">
+          <button class="primary" @click="save">保存</button>
+          <button class="danger" @click="remove">删除</button>
+        </div>
       </div>
       <div class="meta">
-        <input v-model="current.interpreter" placeholder="解释器" />
-        <input v-model="current.tags" placeholder="标签，逗号分隔" />
-        <input v-model.number="current.timeout_sec" type="number" placeholder="超时(秒)" />
+        <label class="fld">解释器（执行脚本的程序）
+          <input v-model="current.interpreter" placeholder="如 /bin/bash、/usr/bin/python3" />
+        </label>
+        <label class="fld">标签（逗号分隔，用于搜索归类）
+          <input v-model="current.tags" placeholder="如 部署,巡检" />
+        </label>
+        <label class="fld">执行超时（秒）
+          <input v-model.number="current.timeout_sec" type="number" />
+        </label>
       </div>
-      <textarea v-model="current.description" rows="2" placeholder="说明" />
-      <textarea v-model="current.content" class="code" spellcheck="false" />
+      <label class="fld">默认参数（作为 $1 $2 … 传入脚本，批量执行时也使用）
+        <input v-model="current.default_args" placeholder='如 --env prod "带空格的参数"' />
+      </label>
+      <label class="fld">脚本说明（用途、注意事项）
+        <textarea v-model="current.description" rows="2" placeholder="这个脚本做什么、什么场景使用" />
+      </label>
+      <label class="fld">脚本内容
+        <textarea v-model="current.content" class="code" spellcheck="false" />
+      </label>
+      <div class="run-row">
+        <label class="fld grow">本次运行参数（留空则使用默认参数）
+          <input v-model="runArgs" :placeholder="current.default_args || '如 --dry-run'" />
+        </label>
+        <button class="primary run-btn" @click="run" :disabled="running">{{ running ? "运行中…" : "运行" }}</button>
+      </div>
       <pre v-if="output" class="out">{{ output }}</pre>
     </section>
     <section class="card placeholder" v-else>
@@ -83,6 +109,7 @@ const selected = ref<number[]>([]);
 const output = ref("");
 const running = ref(false);
 const stopOnError = ref(true);
+const runArgs = ref("");
 
 const dragIndex = ref(-1);
 const dragOverIndex = ref(-1);
@@ -141,6 +168,7 @@ async function load() {
 
 function open(s: any) {
   current.value = { ...s };
+  runArgs.value = "";
   output.value = "";
 }
 
@@ -153,7 +181,9 @@ function create() {
     content: "#!/bin/bash\nset -euo pipefail\n\n",
     tags: "",
     timeout_sec: 120,
+    default_args: "",
   };
+  runArgs.value = "";
   output.value = "";
 }
 
@@ -171,8 +201,9 @@ async function run() {
   output.value = "";
   try {
     if (!current.value.id) await save();
-    const result = await api.post(`/scripts/${current.value.id}/run`);
-    output.value = `# ${current.value.name} · exit ${result.exit_code}\n${result.stdout}${result.stderr}`;
+    const args = runArgs.value.trim() ? runArgs.value : null;
+    const result = await api.post(`/scripts/${current.value.id}/run`, { args });
+    output.value = `# ${result.command} · exit ${result.exit_code}\n${result.stdout}${result.stderr}`;
   } catch (err) {
     output.value = err instanceof Error ? err.message : "运行失败";
   } finally {
@@ -198,6 +229,19 @@ async function batch() {
   }
 }
 
+async function batchDelete() {
+  if (!selected.value.length) return;
+  const names = items.value
+    .filter((s) => selected.value.includes(s.id))
+    .map((s) => s.name)
+    .join("、");
+  if (!confirm(`删除选中的 ${selected.value.length} 个脚本？\n${names}`)) return;
+  await api.post("/scripts/batch-delete", { ids: selected.value });
+  if (current.value && selected.value.includes(current.value.id)) current.value = null;
+  selected.value = [];
+  await load();
+}
+
 async function remove() {
   if (!current.value?.id) {
     current.value = null;
@@ -217,6 +261,7 @@ onMounted(load);
 .layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 .row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.editor .row { align-items: flex-end; }
 h3 { margin: 0; flex: 1; font-size: 15px; }
 input, textarea, button, select { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #fff; }
 .search { width: 100%; margin-bottom: 10px; }
@@ -245,10 +290,17 @@ button:disabled { opacity: 0.5; }
 .empty { text-align: center; padding: 20px 0; }
 .batch { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); margin-top: 10px; }
 .chk { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
-.title { flex: 1; font-family: var(--serif); font-size: 18px; }
-.meta { display: grid; grid-template-columns: 1fr 1fr 110px; gap: 8px; margin-bottom: 8px; }
-.editor textarea { width: 100%; margin-bottom: 8px; }
-.code { min-height: 340px; font-family: var(--mono); font-size: 13px; line-height: 1.5; }
+.title { width: 100%; font-family: var(--serif); font-size: 18px; }
+.meta { display: grid; grid-template-columns: 1fr 1fr 130px; gap: 8px; margin-bottom: 8px; }
+.editor .fld { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.editor .fld input, .editor .fld textarea { color: var(--ink); width: 100%; box-sizing: border-box; }
+.fld.grow { flex: 1; }
+.row-actions { display: flex; gap: 8px; align-self: flex-end; padding-bottom: 8px; }
+.run-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
+.run-btn { margin-bottom: 8px; padding: 8px 22px; }
+.editor textarea { width: 100%; }
+.small { font-size: 12px; margin: 0; }
+.code { min-height: 300px; font-family: var(--mono); font-size: 13px; line-height: 1.5; }
 .out { background: #171411; color: #e8dcc8; padding: 14px; border-radius: 10px; overflow: auto; max-height: 300px; white-space: pre-wrap; }
 .muted { color: var(--muted); font-size: 13px; }
 .placeholder { display: grid; place-items: center; min-height: 320px; }

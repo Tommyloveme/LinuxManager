@@ -222,6 +222,7 @@ class LinuxExecutor:
         linux_user: str | None = None,
         cwd: str | None = None,
         timeout: int | None = None,
+        args: list[str] | None = None,
     ) -> ExecResult:
         suffix = ".sh"
         if "python" in interpreter:
@@ -250,7 +251,7 @@ class LinuxExecutor:
         try:
             exe = interpreter if Path(interpreter).exists() or shutil.which(interpreter) else interpreter
             return await self.run(
-                [exe, path],
+                [exe, path, *(args or [])],
                 linux_user=linux_user,
                 cwd=cwd,
                 timeout=timeout,

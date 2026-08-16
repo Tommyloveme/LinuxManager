@@ -16,64 +16,80 @@
 
       <div class="views-row">
         <span class="muted small vlabel">常用路径</span>
-        <button
-          v-for="v in pathViews"
-          :key="v.id"
-          class="chip"
-          :class="{ on: v.path === listing.path }"
-          :title="v.path"
-          @click="goView(v)"
-        >{{ v.name }}</button>
-        <button class="chip ghost" @click="addPathView">＋保存当前</button>
-        <button class="chip ghost" @click="managing = !managing">{{ managing ? "完成" : "管理" }}</button>
-      </div>
-      <div v-if="managing" class="views-manage">
-        <div v-for="v in pathViews" :key="v.id" class="vm-row">
-          <input v-model="v.name" class="vm-name" placeholder="视图名称" @change="savePathViews" />
-          <input v-model="v.path" class="vm-path mono" placeholder="目录路径" @change="savePathViews" />
-          <button class="mini" @click="v.path = listing.path; savePathViews()" title="设为当前目录">取当前</button>
-          <button class="mini danger" @click="delPathView(v.id)">删除</button>
-        </div>
-        <button class="mini" @click="newPathView">＋新增视图</button>
-        <p v-if="!pathViews.length" class="muted small">还没有视图，点击「保存当前」或「新增视图」创建。</p>
+        <select v-model="selPathId" class="vsel" @change="goSelectedView">
+          <option value="" disabled>选择视图后跳转…</option>
+          <option v-for="v in pathViews" :key="v.id" :value="v.id">{{ v.name }} — {{ v.path }}</option>
+        </select>
+        <button class="mini" @click="addPathView">保存当前</button>
+        <button class="mini" :disabled="!selPath" @click="renamePathView">重命名</button>
+        <button class="mini" :disabled="!selPath" @click="editPathView">改路径</button>
+        <button class="mini danger" :disabled="!selPath" @click="delPathView">删除</button>
       </div>
 
-      <div class="row filter-row">
-        <input v-model="filter" class="filter" placeholder="按名称正则过滤，如 \.log$" />
-        <label class="chk"><input type="checkbox" v-model="showHidden" /> 显示隐藏文件</label>
-        <span class="muted count">{{ visibleEntries.length }} 项 · 选中 {{ picked.length }}</span>
-      </div>
-
-      <div v-if="filterError" class="err small">正则无效：{{ filterError }}</div>
-
-      <table>
-        <thead>
-          <tr>
-            <th><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-            <th>名称</th><th>大小</th><th>修改时间</th><th>权限</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="e in visibleEntries" :key="e.path" :class="{ hidden: e.name.startsWith('.') }">
-            <td><input type="checkbox" :value="e.path" v-model="picked" /></td>
-            <td>
-              <button class="link" @click="e.is_dir ? enter(e) : preview(e)">
-                <span class="ic">{{ e.is_dir ? "📁" : "📄" }}</span> {{ e.name }}
+      <div class="body">
+        <aside class="tree">
+          <div class="tree-head">
+            <span class="muted small">目录树</span>
+            <span class="tree-btns">
+              <button class="mini" :disabled="treeBusy" @click="expandAll">{{ treeBusy ? "展开中…" : "全部展开" }}</button>
+              <button class="mini" @click="collapseAll">全部折叠</button>
+            </span>
+          </div>
+          <div class="tree-list">
+            <div
+              v-for="row in flatTree"
+              :key="row.node.path"
+              class="tnode"
+              :class="{ cur: row.node.path === listing.path }"
+              :style="{ paddingLeft: 4 + row.depth * 14 + 'px' }"
+            >
+              <button class="twist" @click="toggleNode(row.node)">
+                {{ row.node.loading ? "⋯" : row.node.children && !row.node.children.length ? "·" : row.node.expanded ? "▾" : "▸" }}
               </button>
-            </td>
-            <td class="mono">{{ e.is_dir ? "—" : human(e.size) }}</td>
-            <td class="mono">{{ e.mtime?.slice(0, 19).replace("T", " ") }}</td>
-            <td class="mono">{{ e.mode }}</td>
-            <td class="acts">
-              <button v-if="!e.is_dir" class="mini" @click="preview(e)">预览</button>
-              <a class="mini" :href="dl(e.path)" target="_blank">下载</a>
-              <button class="mini danger" @click="remove(e)">删除</button>
-            </td>
-          </tr>
-          <tr v-if="!visibleEntries.length"><td colspan="6" class="muted empty">空目录或无匹配项</td></tr>
-        </tbody>
-      </table>
-      <p class="drop-hint muted">提示：把本机文件拖到此处即可上传到当前目录。</p>
+              <button class="tname" :title="row.node.path" @click="openNode(row.node)">{{ row.node.name }}</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <div class="row filter-row">
+            <input v-model="filter" class="filter" placeholder="按名称正则过滤，如 \.log$" />
+            <label class="chk"><input type="checkbox" v-model="showHidden" /> 显示隐藏文件</label>
+            <span class="muted count">{{ visibleEntries.length }} 项 · 选中 {{ picked.length }}</span>
+          </div>
+
+          <div v-if="filterError" class="err small">正则无效：{{ filterError }}</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
+                <th>名称</th><th>大小</th><th>修改时间</th><th>权限</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="e in visibleEntries" :key="e.path" :class="{ hidden: e.name.startsWith('.') }">
+                <td><input type="checkbox" :value="e.path" v-model="picked" /></td>
+                <td>
+                  <button class="link" @click="e.is_dir ? enter(e) : preview(e)">
+                    <span class="ic">{{ e.is_dir ? "📁" : "📄" }}</span> {{ e.name }}
+                  </button>
+                </td>
+                <td class="mono">{{ e.is_dir ? "—" : human(e.size) }}</td>
+                <td class="mono">{{ e.mtime?.slice(0, 19).replace("T", " ") }}</td>
+                <td class="mono">{{ e.mode }}</td>
+                <td class="acts">
+                  <button v-if="!e.is_dir" class="mini" @click="preview(e)">预览</button>
+                  <a class="mini" :href="dl(e.path)" target="_blank">下载</a>
+                  <button class="mini danger" @click="remove(e)">删除</button>
+                </td>
+              </tr>
+              <tr v-if="!visibleEntries.length"><td colspan="6" class="muted empty">空目录或无匹配项</td></tr>
+            </tbody>
+          </table>
+          <p class="drop-hint muted">提示：把本机文件拖到此处即可上传到当前目录。</p>
+        </div>
+      </div>
     </section>
 
     <aside class="card panel">
@@ -82,12 +98,15 @@
 
       <div class="views-row wrap">
         <span class="muted small vlabel">策略视图</span>
-        <span v-for="v in dlViews" :key="v.id" class="chip-group">
-          <button class="chip" :title="dlViewTip(v)" @click="applyDlView(v)">{{ v.name }}</button>
-          <button class="chip-x" title="重命名" @click="renameDlView(v)">✎</button>
-          <button class="chip-x" title="删除" @click="delDlView(v.id)">×</button>
-        </span>
-        <button class="chip ghost" @click="saveDlView">＋保存当前策略</button>
+        <select v-model="selDlId" class="vsel" @change="applySelectedDl">
+          <option value="" disabled>选择视图后套用…</option>
+          <option v-for="v in dlViews" :key="v.id" :value="v.id" :title="dlViewTip(v)">{{ v.name }}</option>
+        </select>
+      </div>
+      <div class="views-row wrap">
+        <button class="mini" @click="saveDlView">保存当前策略</button>
+        <button class="mini" :disabled="!selDl" @click="renameSelectedDl">重命名</button>
+        <button class="mini danger" :disabled="!selDl" @click="delSelectedDl">删除</button>
       </div>
 
       <label class="fld">收集范围
@@ -234,40 +253,59 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/* ---------- 常用路径视图 ---------- */
+/* ---------- 常用路径视图（下拉框管理） ---------- */
 type PathView = { id: string; name: string; path: string };
 const pathViews = ref<PathView[]>(loadLS("cedar.pathViews", []));
-const managing = ref(false);
+const selPathId = ref("");
+const selPath = computed(() => pathViews.value.find((v) => v.id === selPathId.value) || null);
 
 function savePathViews() {
   saveLS("cedar.pathViews", pathViews.value);
+}
+function goSelectedView() {
+  if (!selPath.value) return;
+  path.value = selPath.value.path;
+  ls();
 }
 function addPathView() {
   const cur = listing.value.path || path.value;
   const name = prompt("视图名称", cur.split("/").filter(Boolean).pop() || "根目录");
   if (!name) return;
-  pathViews.value.push({ id: uid(), name, path: cur });
+  const view = { id: uid(), name, path: cur };
+  pathViews.value.push(view);
+  selPathId.value = view.id;
   savePathViews();
 }
-function newPathView() {
-  pathViews.value.push({ id: uid(), name: "新视图", path: listing.value.path || "/" });
+function renamePathView() {
+  if (!selPath.value) return;
+  const name = prompt("重命名视图", selPath.value.name);
+  if (!name) return;
+  selPath.value.name = name;
   savePathViews();
 }
-function delPathView(id: string) {
-  pathViews.value = pathViews.value.filter((v) => v.id !== id);
+function editPathView() {
+  if (!selPath.value) return;
+  const p = prompt("修改视图指向的目录路径", selPath.value.path);
+  if (!p) return;
+  selPath.value.path = p;
   savePathViews();
 }
-function goView(v: PathView) {
-  path.value = v.path;
-  ls();
+function delPathView() {
+  if (!selPath.value) return;
+  if (!confirm(`删除视图「${selPath.value.name}」？`)) return;
+  pathViews.value = pathViews.value.filter((v) => v.id !== selPathId.value);
+  selPathId.value = "";
+  savePathViews();
 }
 
-/* ---------- 下载策略视图 ---------- */
+/* ---------- 下载策略视图（下拉框管理） ---------- */
 type DlView = {
   id: string; name: string; sources: string; include: string; exclude: string;
   mode: string; fmt: string; outputName: string;
 };
 const dlViews = ref<DlView[]>(loadLS("cedar.downloadViews", []));
+const selDlId = ref("");
+const selDl = computed(() => dlViews.value.find((v) => v.id === selDlId.value) || null);
 
 function saveDlViews() {
   saveLS("cedar.downloadViews", dlViews.value);
@@ -275,14 +313,18 @@ function saveDlViews() {
 function saveDlView() {
   const name = prompt("策略视图名称", outputName.value || "下载策略");
   if (!name) return;
-  dlViews.value.push({
+  const view = {
     id: uid(), name,
     sources: sourcesText.value, include: include.value, exclude: exclude.value,
     mode: mode.value, fmt: fmt.value, outputName: outputName.value,
-  });
+  };
+  dlViews.value.push(view);
+  selDlId.value = view.id;
   saveDlViews();
 }
-function applyDlView(v: DlView) {
+function applySelectedDl() {
+  const v = selDl.value;
+  if (!v) return;
   sourcesText.value = v.sources;
   include.value = v.include;
   exclude.value = v.exclude;
@@ -290,14 +332,18 @@ function applyDlView(v: DlView) {
   fmt.value = v.fmt;
   outputName.value = v.outputName;
 }
-function renameDlView(v: DlView) {
-  const name = prompt("重命名策略视图", v.name);
+function renameSelectedDl() {
+  if (!selDl.value) return;
+  const name = prompt("重命名策略视图", selDl.value.name);
   if (!name) return;
-  v.name = name;
+  selDl.value.name = name;
   saveDlViews();
 }
-function delDlView(id: string) {
-  dlViews.value = dlViews.value.filter((v) => v.id !== id);
+function delSelectedDl() {
+  if (!selDl.value) return;
+  if (!confirm(`删除策略视图「${selDl.value.name}」？`)) return;
+  dlViews.value = dlViews.value.filter((v) => v.id !== selDlId.value);
+  selDlId.value = "";
   saveDlViews();
 }
 function dlViewTip(v: DlView) {
@@ -367,6 +413,73 @@ function toggleAll() {
     visibleEntries.value.forEach((e) => set.add(e.path));
     picked.value = [...set];
   }
+}
+
+/* ---------- 目录树导航 ---------- */
+type TreeNode = { path: string; name: string; children: TreeNode[] | null; expanded: boolean; loading: boolean };
+const treeRoot = ref<TreeNode>({ path: "/", name: "/", children: null, expanded: true, loading: false });
+const treeBusy = ref(false);
+
+async function loadKids(n: TreeNode) {
+  n.loading = true;
+  try {
+    const res = await api.get(`/files/ls?path=${encodeURIComponent(n.path)}`);
+    n.children = ((res.entries || []) as any[])
+      .filter((e) => e.is_dir)
+      .map((e) => ({ path: e.path, name: e.name, children: null, expanded: false, loading: false }));
+  } catch {
+    n.children = [];
+  } finally {
+    n.loading = false;
+  }
+}
+async function toggleNode(n: TreeNode) {
+  if (n.children === null) await loadKids(n);
+  if (!n.children || !n.children.length) return;
+  n.expanded = !n.expanded;
+}
+function openNode(n: TreeNode) {
+  path.value = n.path;
+  ls();
+}
+const flatTree = computed(() => {
+  const out: { node: TreeNode; depth: number }[] = [];
+  const walk = (n: TreeNode, d: number) => {
+    out.push({ node: n, depth: d });
+    if (n.expanded && n.children) {
+      n.children
+        .filter((c) => showHidden.value || !c.name.startsWith("."))
+        .forEach((c) => walk(c, d + 1));
+    }
+  };
+  walk(treeRoot.value, 0);
+  return out;
+});
+async function expandAll() {
+  treeBusy.value = true;
+  try {
+    // 广度优先展开，最多 3 层且约 400 个节点，避免扫描整个文件系统
+    let budget = 400;
+    const queue: { n: TreeNode; d: number }[] = [{ n: treeRoot.value, d: 0 }];
+    while (queue.length && budget > 0) {
+      const { n, d } = queue.shift()!;
+      if (n.children === null) await loadKids(n);
+      const kids = n.children || [];
+      if (kids.length) n.expanded = true;
+      budget -= kids.length;
+      if (d + 1 < 3) kids.forEach((c) => queue.push({ n: c, d: d + 1 }));
+    }
+  } finally {
+    treeBusy.value = false;
+  }
+}
+function collapseAll() {
+  const walk = (n: TreeNode) => {
+    n.expanded = false;
+    n.children?.forEach(walk);
+  };
+  walk(treeRoot.value);
+  treeRoot.value.expanded = true; // 保留默认展开的第一层
 }
 
 async function mkdir() {
@@ -616,7 +729,10 @@ async function uploadFiles(files: File[]) {
   await ls();
 }
 
-onMounted(ls);
+onMounted(async () => {
+  await ls();
+  await loadKids(treeRoot.value); // 目录树默认展开一层
+});
 </script>
 
 <style scoped>
@@ -655,28 +771,30 @@ tr.hidden { opacity: 0.6; }
 .upload-btn { display: block; text-align: center; border: 1px dashed var(--line); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .upload-btn input { display: none; }
 
-/* 视图（常用路径 / 下载策略） */
+/* 视图（常用路径 / 下载策略）— 下拉框管理 */
 .views-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-.views-row.wrap { margin-bottom: 12px; }
+.views-row.wrap { margin-bottom: 8px; }
 .vlabel { white-space: nowrap; }
-.chip {
-  padding: 3px 10px; font-size: 12px; border-radius: 999px; cursor: pointer;
-  background: #faf6ec; border: 1px solid var(--line); max-width: 160px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.vsel { flex: 1; min-width: 140px; font-size: 12px; padding: 5px 8px; max-width: 420px; }
+
+/* 目录树 + 文件表 */
+.body { display: grid; grid-template-columns: 230px 1fr; gap: 14px; align-items: start; }
+.tree { border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: #fbf8f0; }
+.tree-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 4px; }
+.tree-btns { white-space: nowrap; }
+.tree-btns .mini { margin-left: 2px; padding: 2px 6px; }
+.tree-list { max-height: 60vh; overflow: auto; }
+.tnode { display: flex; align-items: center; border-radius: 6px; }
+.tnode.cur { background: #f3ead4; }
+.twist {
+  border: 0; background: none; padding: 1px 2px; cursor: pointer; color: var(--muted);
+  width: 18px; flex: 0 0 18px; font-size: 11px; text-align: center;
 }
-.chip.on { background: #f3ead4; border-color: var(--accent); }
-.chip.ghost { background: transparent; color: var(--muted); border-style: dashed; }
-.chip-group { display: inline-flex; align-items: center; }
-.chip-group .chip { border-radius: 999px 0 0 999px; }
-.chip-x {
-  padding: 3px 6px; font-size: 11px; border-left: 0; cursor: pointer;
-  background: #faf6ec; border: 1px solid var(--line);
+.tname {
+  border: 0; background: none; padding: 3px 4px; cursor: pointer; font-size: 12.5px;
+  text-align: left; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.chip-group .chip-x:last-child { border-radius: 0 999px 999px 0; }
-.views-manage { border: 1px dashed var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
-.vm-row { display: flex; gap: 6px; align-items: center; }
-.vm-name { width: 130px; font-size: 12px; padding: 5px 8px; }
-.vm-path { flex: 1; font-size: 12px; padding: 5px 8px; }
+.tname:hover { color: var(--accent); }
 
 /* 预览浮层 */
 .overlay { position: fixed; inset: 0; background: rgba(20, 16, 12, 0.55); display: grid; place-items: center; z-index: 50; padding: 24px; }
@@ -711,5 +829,5 @@ tr.hidden { opacity: 0.6; }
 .pv-result:hover { background: #f3ead4; }
 .pv-result .ln { color: var(--muted); min-width: 42px; text-align: right; flex: 0 0 auto; }
 .pv-result .lt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 1050px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 1050px) { .layout { grid-template-columns: 1fr; } .body { grid-template-columns: 1fr; } }
 </style>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import uuid
 from datetime import datetime, timezone
 
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.adapters.executor import LinuxExecutor
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import CedarError, NotFoundError
 from app.db.models import Script, ScriptRun
 from app.modules.audit.service import AuditService
 
@@ -59,6 +60,16 @@ class ScriptService:
         await self.db.delete(script)
         await self.db.commit()
 
+    async def delete_many(self, script_ids: list[int]) -> int:
+        deleted = 0
+        for script_id in script_ids:
+            script = await self.db.get(Script, script_id)
+            if script:
+                await self.db.delete(script)
+                deleted += 1
+        await self.db.commit()
+        return deleted
+
     async def run_one(
         self,
         script: Script,
@@ -67,13 +78,21 @@ class ScriptService:
         cwd: str | None,
         actor: str,
         batch_id: str = "",
+        args: str | None = None,
     ) -> ScriptRun:
+        # 未显式传参时使用脚本配置的默认参数；按 shell 规则拆分
+        raw_args = args if args is not None else (script.default_args or "")
+        try:
+            arg_list = shlex.split(raw_args) if raw_args.strip() else []
+        except ValueError as exc:
+            raise CedarError(f"参数格式错误（引号未闭合等）: {exc}") from exc
+
         run = ScriptRun(
             script_id=script.id,
             batch_id=batch_id,
             linux_user=linux_user or "",
             cwd=cwd or "",
-            command=f"{script.interpreter} <{script.name}>",
+            command=f"{script.interpreter} <{script.name}> {raw_args}".strip(),
             status="running",
             started_at=datetime.now(timezone.utc),
         )
@@ -87,6 +106,7 @@ class ScriptService:
                 linux_user=linux_user,
                 cwd=cwd,
                 timeout=script.timeout_sec,
+                args=arg_list,
             )
             run.exit_code = result.exit_code
             run.stdout = result.stdout

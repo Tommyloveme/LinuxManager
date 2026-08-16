@@ -7,26 +7,40 @@
         </div>
         <div>
           <div class="name">Cedar</div>
-          <div class="tag">主机控制台</div>
+          <div class="tag">Linux 运维控制台</div>
         </div>
       </div>
       <nav>
-        <p class="group">观察</p>
-        <RouterLink to="/">总览</RouterLink>
-        <RouterLink to="/jobs">作业</RouterLink>
-        <RouterLink to="/audit">审计</RouterLink>
-        <p class="group">操作</p>
-        <RouterLink to="/users">Linux 用户</RouterLink>
-        <RouterLink to="/scripts">脚本</RouterLink>
-        <RouterLink to="/playbooks">批处理</RouterLink>
-        <RouterLink to="/files">文件</RouterLink>
-        <RouterLink to="/process">进程</RouterLink>
-        <RouterLink to="/services">服务</RouterLink>
-        <RouterLink to="/terminal">终端</RouterLink>
+        <p class="group">监控中心</p>
+        <RouterLink to="/">
+          <span class="nav-title">运行概览</span>
+          <span class="nav-desc">资源、负载与网络实时摘要</span>
+        </RouterLink>
+        <RouterLink to="/monitor">
+          <span class="nav-title">进程与服务</span>
+          <span class="nav-desc">进程治理与 systemd 单元管理</span>
+        </RouterLink>
+        <p class="group">运维操作</p>
+        <RouterLink to="/users">
+          <span class="nav-title">执行身份</span>
+          <span class="nav-desc">选择并验证 Linux 用户</span>
+        </RouterLink>
+        <RouterLink to="/scripts">
+          <span class="nav-title">脚本中心</span>
+          <span class="nav-desc">编辑、保存与批量执行</span>
+        </RouterLink>
+        <RouterLink to="/files">
+          <span class="nav-title">文件管理</span>
+          <span class="nav-desc">浏览、预览、上传与下载</span>
+        </RouterLink>
+        <RouterLink to="/terminal">
+          <span class="nav-title">远程终端</span>
+          <span class="nav-desc">交互式终端会话</span>
+        </RouterLink>
       </nav>
       <div class="side-foot">
-        <RouterLink to="/settings" class="quiet">设置</RouterLink>
-        <button class="quiet" @click="logout">退出</button>
+        <RouterLink to="/settings" class="quiet">系统设置</RouterLink>
+        <button class="quiet" @click="logout">退出登录</button>
       </div>
     </aside>
     <div class="main">
@@ -63,17 +77,13 @@ const linuxUser = ref(session.linuxUser);
 const cwd = ref(session.cwd);
 
 const titles: Record<string, string> = {
-  "/": "总览",
-  "/users": "Linux 用户",
-  "/scripts": "脚本库",
-  "/playbooks": "批处理",
-  "/files": "文件与同步",
-  "/process": "进程",
-  "/services": "systemd 服务",
-  "/terminal": "终端",
-  "/jobs": "作业",
-  "/audit": "审计",
-  "/settings": "设置",
+  "/": "运行概览",
+  "/monitor": "进程与服务",
+  "/users": "执行身份",
+  "/scripts": "脚本中心",
+  "/files": "文件管理",
+  "/terminal": "远程终端",
+  "/settings": "系统设置",
 };
 
 const title = computed(() => titles[route.path] || "Cedar");
@@ -157,15 +167,21 @@ nav {
   color: var(--sidebar-dim);
 }
 nav a {
-  padding: 8px 10px;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 9px;
   color: #d9d0c2;
 }
-nav a.router-link-exact-active,
-nav a.router-link-active {
+nav a .nav-title { font-size: 14px; }
+nav a .nav-desc { font-size: 11px; color: var(--sidebar-dim); line-height: 1.3; }
+nav a:hover { background: #211d19; }
+nav a.router-link-exact-active {
   background: #2a2622;
   color: #fff;
 }
+nav a.router-link-exact-active .nav-desc { color: #b6ab9a; }
 .side-foot {
   display: flex;
   justify-content: space-between;

@@ -51,6 +51,13 @@ export const useSession = defineStore("session", {
       this.cwd = cwd;
       this.persistIdentity();
     },
+    async switchUser(linuxUser: string, password: string) {
+      const res = await api.post("/users/switch", { linux_user: linuxUser, password });
+      this.linuxUser = res.linux_user;
+      this.cwd = res.cwd;
+      this.persistIdentity();
+      return res;
+    },
     logout() {
       this.token = "";
       this.username = "";

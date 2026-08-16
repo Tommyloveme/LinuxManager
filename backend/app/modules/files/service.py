@@ -93,6 +93,19 @@ class FileService:
         else:
             target.unlink()
 
+    def collect(self, sources: list[str], include: str | None, exclude: str | None) -> dict:
+        """按正则收集文件清单（供前端"复制到本地"模式逐个下载）。"""
+        files = self.archiver.collect_files(sources, include, exclude)
+        items = []
+        for f in files:
+            try:
+                rel = self.archiver._arcname(f, sources)  # noqa: SLF001
+                items.append({"path": str(f), "rel": rel, "size": f.stat().st_size})
+            except OSError:
+                continue
+        total = sum(i["size"] for i in items)
+        return {"items": items, "file_count": len(items), "total_bytes": total}
+
     async def archive(self, body: dict) -> dict:
         result = await self.archiver.create_archive(
             body.get("sources") or [],

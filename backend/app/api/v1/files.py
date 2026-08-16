@@ -15,7 +15,6 @@ from app.core.security import decode_token
 from app.db.models import AppUser
 from app.modules.audit.service import AuditService
 from app.modules.files.service import FileService
-from app.modules.jobs.service import JobService
 
 router = APIRouter(prefix="/files", tags=["files"])
 svc = FileService()
@@ -70,6 +69,14 @@ async def remove(path: str, user: AppUser = Depends(current_user), db: AsyncSess
         raise exc.as_http() from exc
 
 
+@router.post("/collect")
+async def collect(body: ArchiveIn, _: object = Depends(current_user)) -> dict:
+    try:
+        return svc.collect(body.sources, body.include, body.exclude)
+    except CedarError as exc:
+        raise exc.as_http() from exc
+
+
 @router.post("/archive")
 async def archive(
     body: ArchiveIn,
@@ -78,10 +85,6 @@ async def archive(
 ) -> dict:
     try:
         result = await svc.archive(body.model_dump())
-        job = await JobService(db).create("archive", f"打包 {body.output_name}", body.model_dump())
-        await JobService(db).finish(
-            job, status="ok", result=json.dumps(result, ensure_ascii=False), artifact_path=result["archive_path"]
-        )
         await AuditService(db).record(
             actor=user.username,
             action="file.archive",

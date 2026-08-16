@@ -22,16 +22,12 @@ class ModuleSpec:
 
 
 MODULES: tuple[ModuleSpec, ...] = (
-    ModuleSpec("overview", "总览", "主机资源与健康摘要", "/system", "observe", "grid"),
-    ModuleSpec("identity", "Linux 用户", "查看系统用户并切换执行身份", "/users", "operate", "user"),
-    ModuleSpec("scripts", "脚本", "脚本库、单次与批量执行", "/scripts", "operate", "code"),
-    ModuleSpec("playbooks", "批处理", "把多步操作打包成可复用流程", "/playbooks", "operate", "layers"),
-    ModuleSpec("files", "文件", "浏览、正则打包、目录同步", "/files", "operate", "folder"),
-    ModuleSpec("process", "进程", "进程查看、终止与资源排序", "/process", "operate", "activity"),
-    ModuleSpec("services", "服务", "systemd 单元启停与状态", "/services", "operate", "cpu"),
-    ModuleSpec("terminal", "终端", "浏览器内 PTY，显示当前目录", "/terminal", "operate", "terminal"),
-    ModuleSpec("jobs", "作业", "后台长任务进度与产物", "/jobs", "observe", "clock"),
-    ModuleSpec("audit", "审计", "敏感操作留痕", "/audit", "observe", "shield"),
+    ModuleSpec("overview", "运行概览", "主机资源、负载与网络实时摘要", "/system", "monitor", "grid"),
+    ModuleSpec("monitor", "进程与服务", "进程资源排序、systemd 单元治理，支持实时刷新", "/process", "monitor", "activity"),
+    ModuleSpec("identity", "执行身份", "选择并验证 Linux 用户，作为后续操作的执行者", "/users", "operate", "user"),
+    ModuleSpec("scripts", "脚本中心", "脚本编辑、保存与单次/批量执行", "/scripts", "operate", "code"),
+    ModuleSpec("files", "文件管理", "浏览、过滤、预览、上传与批量下载/打包", "/files", "operate", "folder"),
+    ModuleSpec("terminal", "远程终端", "浏览器内交互式终端，实时显示当前目录", "/terminal", "operate", "terminal"),
 )
 
 

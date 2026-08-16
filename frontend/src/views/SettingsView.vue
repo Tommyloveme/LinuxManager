@@ -8,7 +8,7 @@
       <p v-if="msg">{{ msg }}</p>
     </form>
     <h3>关于</h3>
-    <p class="muted">Cedar 1.0.0 · 模块化主机运维控制台。新增能力请看 docs/ARCHITECTURE.md 与 docs/REPO_GUIDE.md。</p>
+    <p class="muted">Cedar · Linux 运维控制台。当前版本聚焦运行概览、进程与服务、执行身份、脚本中心、文件管理与远程终端六大模块。</p>
   </div>
 </template>
 

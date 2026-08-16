@@ -21,6 +21,11 @@ class IdentityIn(BaseModel):
     cwd: str = ""
 
 
+class UserSwitchIn(BaseModel):
+    linux_user: str
+    password: str = ""
+
+
 class ScriptIn(BaseModel):
     name: str
     description: str = ""

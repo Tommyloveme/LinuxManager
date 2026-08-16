@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Playbook, PlaybookStep, Script
+from app.db.models import Script
 
 
 SAMPLE_SCRIPTS = [
@@ -54,39 +54,6 @@ async def seed_if_empty(db: AsyncSession) -> None:
     exists = await db.scalar(select(Script.id).limit(1))
     if exists:
         return
-    scripts: list[Script] = []
     for item in SAMPLE_SCRIPTS:
-        script = Script(**item, timeout_sec=60)
-        db.add(script)
-        scripts.append(script)
-    await db.flush()
-    playbook = Playbook(
-        name="日常巡检",
-        description="依次采集系统摘要与进程 Top，适合作为批处理模板",
-        tags="inspect",
-        stop_on_error=False,
-    )
-    db.add(playbook)
-    await db.flush()
-    # 通过 playbook_id 直接建行，避免在 async 会话里触发关系懒加载（MissingGreenlet）
-    db.add(
-        PlaybookStep(
-            playbook_id=playbook.id,
-            ord=0,
-            name="采集系统摘要",
-            kind="script",
-            payload=f'{{"script_id": {scripts[0].id}}}',
-            on_error="continue",
-        )
-    )
-    db.add(
-        PlaybookStep(
-            playbook_id=playbook.id,
-            ord=1,
-            name="采集进程 Top",
-            kind="script",
-            payload=f'{{"script_id": {scripts[2].id}}}',
-            on_error="continue",
-        )
-    )
+        db.add(Script(**item, timeout_sec=60))
     await db.commit()

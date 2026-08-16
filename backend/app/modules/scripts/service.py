@@ -99,6 +99,8 @@ class ScriptService:
             ok=run.status == "ok",
         )
         await self.db.refresh(run)
+        # 直接绑定已加载的 script，避免 _run_out 在异步会话里触发关系懒加载（MissingGreenlet）
+        run.script = script
         return run
 
     async def run_batch(

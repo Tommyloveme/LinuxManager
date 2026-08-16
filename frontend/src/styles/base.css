@@ -1,0 +1,52 @@
+:root {
+  --bg: #efe6d4;
+  --bg-2: #f7f0e2;
+  --ink: #1c1814;
+  --muted: #6f675c;
+  --line: #d8cdb8;
+  --card: #fffaf0;
+  --sidebar: #171411;
+  --sidebar-ink: #ece4d6;
+  --sidebar-dim: #9a9083;
+  --accent: #2a6b4f;
+  --accent-ink: #f4efe4;
+  --copper: #b45a28;
+  --danger: #8f2d2d;
+  --warn: #9a6b16;
+  --ok: #2a6b4f;
+  --shadow: 0 18px 40px rgba(28, 24, 20, 0.08);
+  --radius: 14px;
+  --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --serif: "Source Serif 4", "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}

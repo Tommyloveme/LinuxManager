@@ -4,7 +4,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -20,20 +20,29 @@ class ScriptService:
         self.executor = LinuxExecutor()
 
     async def list_scripts(self) -> list[Script]:
-        result = await self.db.scalars(select(Script).order_by(Script.updated_at.desc()))
+        result = await self.db.scalars(select(Script).order_by(Script.ord, Script.id))
         return list(result)
+
+    async def reorder(self, ordered_ids: list[int]) -> None:
+        for index, script_id in enumerate(ordered_ids):
+            script = await self.db.get(Script, script_id)
+            if script:
+                script.ord = index
+        await self.db.commit()
+
+    async def create(self, data: dict) -> Script:
+        # 新脚本排到末尾
+        max_ord = await self.db.scalar(select(func.max(Script.ord)))
+        script = Script(**data, ord=(max_ord or 0) + 1)
+        self.db.add(script)
+        await self.db.commit()
+        await self.db.refresh(script)
+        return script
 
     async def get(self, script_id: int) -> Script:
         script = await self.db.get(Script, script_id)
         if not script:
             raise NotFoundError("脚本不存在")
-        return script
-
-    async def create(self, data: dict) -> Script:
-        script = Script(**data)
-        self.db.add(script)
-        await self.db.commit()
-        await self.db.refresh(script)
         return script
 
     async def update(self, script_id: int, data: dict) -> Script:

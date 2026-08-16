@@ -80,7 +80,8 @@ class ArchiveAdapter:
                     for file in files:
                         tf.add(file, arcname=self._arcname(file, sources))
                         total += file.stat().st_size
-            return ArchiveResult(str(dest), len(files), total)
+            # 返回绝对路径，避免下载接口按进程 CWD 解析相对路径时出错
+            return ArchiveResult(str(dest.resolve()), len(files), total)
 
         return await asyncio.to_thread(_pack)
 

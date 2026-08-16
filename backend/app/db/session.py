@@ -31,6 +31,21 @@ async def init_db() -> None:
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_ensure_columns)
+
+
+def _ensure_columns(conn) -> None:
+    """对已存在的 SQLite 库做轻量补列迁移（create_all 不会给旧表加新列）。"""
+    from sqlalchemy import text
+
+    migrations = {
+        "scripts": {"ord": "INTEGER DEFAULT 0"},
+    }
+    for table, columns in migrations.items():
+        existing = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
+        for col, ddl in columns.items():
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

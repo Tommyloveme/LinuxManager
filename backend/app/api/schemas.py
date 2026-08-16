@@ -44,6 +44,10 @@ class ScriptPatch(BaseModel):
     timeout_sec: int | None = None
 
 
+class ScriptReorderIn(BaseModel):
+    ids: list[int]
+
+
 class ScriptRunIn(BaseModel):
     script_ids: list[int]
     stop_on_error: bool = True

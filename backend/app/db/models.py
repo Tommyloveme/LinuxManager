@@ -47,6 +47,7 @@ class Script(Base, TimestampMixin):
     content: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[str] = mapped_column(String(255), default="")
     timeout_sec: Mapped[int] = mapped_column(Integer, default=120)
+    ord: Mapped[int] = mapped_column(Integer, default=0, index=True)
 
     runs: Mapped[list[ScriptRun]] = relationship(back_populates="script")
 

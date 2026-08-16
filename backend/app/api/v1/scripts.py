@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_identity, current_user, cwd_of, db_session, linux_user_of
-from app.api.schemas import ScriptIn, ScriptPatch, ScriptRunIn
+from app.api.schemas import ScriptIn, ScriptPatch, ScriptReorderIn, ScriptRunIn
 from app.core.exceptions import CedarError
 from app.db.models import AppUser, LinuxIdentity, Script, ScriptRun
 from app.modules.scripts.service import ScriptService
@@ -21,6 +21,7 @@ def _script_out(script: Script) -> dict:
         "content": script.content,
         "tags": script.tags,
         "timeout_sec": script.timeout_sec,
+        "ord": script.ord,
         "updated_at": script.updated_at.isoformat() if script.updated_at else None,
     }
 
@@ -60,6 +61,18 @@ async def create_script(
 ) -> dict:
     script = await ScriptService(db).create(body.model_dump())
     return _script_out(script)
+
+
+@router.post("/reorder")
+async def reorder_scripts(
+    body: ScriptReorderIn,
+    _: object = Depends(current_user),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    svc = ScriptService(db)
+    await svc.reorder(body.ids)
+    items = await svc.list_scripts()
+    return {"items": [_script_out(s) for s in items]}
 
 
 @router.get("/runs")

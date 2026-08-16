@@ -29,6 +29,45 @@ sudo ./packaging/install.sh
 - 密码：环境变量 `CEDAR_ADMIN_PASSWORD`，未设置时为 `changeme`
 - **登录后立刻修改密码**
 
+## Python 依赖安装
+
+后端依赖全部列在 `backend/requirements.txt`。推荐安装到仓库根的 `.venv` 虚拟环境（维测脚本会自动探测该位置）：
+
+```bash
+cd LinuxManager                       # 仓库根目录
+./scripts/install-deps.sh             # 一键：创建 .venv 并安装全部依赖
+```
+
+等价的手动步骤：
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -U pip
+.venv/bin/pip install -r backend/requirements.txt
+```
+
+网络受限时用国内镜像（二选一）：
+
+```bash
+PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple ./scripts/install-deps.sh
+# 或全局配置
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+验证是否装全（无输出即通过）：
+
+```bash
+.venv/bin/python -c "import fastapi, uvicorn, sqlalchemy, aiosqlite, pydantic_settings, jose, passlib, psutil, websockets"
+```
+
+`./scripts/start.sh` 启动前也会自动做同样的检查：发现缺失模块时默认自动执行安装（设 `CEDAR_AUTO_INSTALL=0` 可改为仅报错退出）。
+
+常见问题：
+
+- **`No module named 'sqlalchemy'` 等报错**：依赖装到了系统 pip（`pip install --user`）或另一个环境。删除半残环境后重跑 `./scripts/install-deps.sh` 即可。
+- **openSUSE 缺少 venv/pip**：`sudo zypper install python313 python313-pip`（版本号按系统实际调整）。
+- **离线机器**：在有网机器上 `pip download -r backend/requirements.txt -d wheels/`，拷贝后 `pip install --no-index --find-links wheels/ -r backend/requirements.txt`。
+
 ## 手动开发运行
 
 ```bash

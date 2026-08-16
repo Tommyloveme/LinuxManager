@@ -7,7 +7,8 @@
 
 | 脚本 | 作用 |
 | --- | --- |
-| `start.sh` | 启动服务，等待健康检查通过 |
+| `install-deps.sh` | 创建 `.venv` 并安装 `backend/requirements.txt` 全部依赖 |
+| `start.sh` | 启动前自检 Python 依赖（缺失默认自动安装），等待健康检查通过 |
 | `stop.sh` | 优雅停止，超时后强制结束 |
 | `restart.sh` | 重启 |
 | `status.sh` | 运行状态 + 健康检查 + 端口监听 |
@@ -23,6 +24,6 @@ CEDAR_PORT=9000 ./scripts/restart.sh   # 环境变量可覆盖端口等默认值
 ./scripts/backup.sh
 ```
 
-可用的环境变量：`CEDAR_UNIT`（systemd 单元名）、`CEDAR_HOST`、`CEDAR_PORT`、`CEDAR_DATA_DIR`、`BACKUP_DIR`。
+可用的环境变量：`CEDAR_UNIT`（systemd 单元名）、`CEDAR_HOST`、`CEDAR_PORT`、`CEDAR_DATA_DIR`、`BACKUP_DIR`、`CEDAR_AUTO_INSTALL`（默认 1，start.sh 发现缺依赖时自动安装）、`PIP_INDEX_URL`（pip 镜像源）。
 
 `_common.sh` 是公共函数库，仅供其它脚本 `source`，不要直接执行。

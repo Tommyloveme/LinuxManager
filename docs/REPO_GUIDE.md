@@ -10,6 +10,7 @@
 ├── frontend/         Vue 3 前端
 ├── docs/             架构与运维文档
 ├── packaging/        systemd 与安装脚本
+├── scripts/          维测脚本（启停、重启、状态、日志、备份）
 ├── Makefile          常用入口
 └── README.md
 ```

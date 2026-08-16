@@ -69,6 +69,21 @@ sudo systemctl status cedar
 journalctl -u cedar -f
 ```
 
+## 维测脚本
+
+`scripts/` 下提供日常启停与运维入口（自动识别 systemd 或 pid 文件模式）：
+
+```bash
+./scripts/start.sh      # 启动并等待健康检查
+./scripts/stop.sh       # 优雅停止
+./scripts/restart.sh    # 重启
+./scripts/status.sh     # 状态 + 健康检查 + 端口监听
+./scripts/logs.sh       # 跟踪日志
+./scripts/backup.sh     # 备份数据库与配置
+```
+
+详见 [scripts/README.md](../scripts/README.md)。
+
 ## 防火墙（firewalld）
 
 ```bash

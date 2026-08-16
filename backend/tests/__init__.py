@@ -1,0 +1,1 @@
+"""Minimal pytest config."""
